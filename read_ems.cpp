@@ -166,6 +166,7 @@ TGraphErrors * make_graph(const std::list<EMS_t> & lst)
     g->SetPointError(n, ems.t.error, ems.E.error);
   }
   g->SetMarkerStyle(21);
+  g->SetMarkerSize(0.5);
   return g;
 }
 
@@ -194,10 +195,6 @@ int main(int argc, char ** argv)
   TMultiGraph * mg = new TMultiGraph;
   mg->Add(eg, "p");
   mg->Add(pg, "p");
-  multi_step_fit("efun",nlevels,lambda,eg);
-  eg->GetFunction("efun")->SetLineColor(kBlue);
-  multi_step_fit("pfun",nlevels,lambda,pg);
-  pg->GetFunction("pfun")->SetLineColor(kRed);
 	TApplication theApp("Draw ems files", &argc, argv);
   auto c = new TCanvas;
   c->Divide(1,2);
@@ -229,6 +226,27 @@ int main(int argc, char ** argv)
   mg->Draw("a");
   mg->GetXaxis()->SetTimeDisplay(kTRUE);
 
+  multi_step_fit("efun",nlevels,lambda,eg);
+  eg->GetFunction("efun")->SetLineColor(kBlue);
+  multi_step_fit("pfun",nlevels,lambda,pg);
+  pg->GetFunction("pfun")->SetLineColor(kRed);
+  new TCanvas;
+  eg->GetFunction("efun")->Draw();
+  pg->GetFunction("pfun")->Draw("same");
+  double tmin = ltot.front().t.value;
+  double tmax = ltot.back().t.value;
+  TGraph * fun_g =  new TGraph;
+  for(int i=0;i<100;i++)
+  {
+    double t = tmin + (tmax-tmin)*i/100;
+    double E1 = eg->GetFunction("efun")->Eval(t);
+    double E2 = pg->GetFunction("pfun")->Eval(t);
+    double E = sqrt(E1*E2)*cos(0.011);
+    fun_g->SetPoint(fun_g->GetN(), t, E);
+  }
+  fun_g->SetLineColor(kGreen);
+  fun_g->Draw("same");
+
   c->cd(2);
   wg->Draw("al");
   wg->GetXaxis()->SetTitle("time");
@@ -238,12 +256,9 @@ int main(int argc, char ** argv)
   
   std::cout << "Making spline " << std::endl;
 
-  new TCanvas;
   std::vector<double> T;
   std::vector<double> E1;
   std::vector<double> E2;
-  double tmin = ltot.front().t.value;
-  double tmax = ltot.back().t.value;
   int i=0;
   int Nspline=50;
   while(i<Nspline)
@@ -267,8 +282,9 @@ int main(int argc, char ** argv)
   c->cd(2);
   spline2.SetLineColor(kBlue);
   spline2.Draw("same");
-  new TCanvas;
   multi_step_fit("f", nlevels, lambda,wg);
+  c->Modified();
+  c->Update();
   theApp.Run();
 }
 
