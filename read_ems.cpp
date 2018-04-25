@@ -19,6 +19,7 @@
 #include <fstream>
 #include <list>
 #include <fmt/printf.h>
+#include <string>
 
 #include <TApplication.h>
 #include <TCanvas.h>
@@ -97,9 +98,10 @@ inline double erf_multi_step_function2(double *x, double * par)
 {
   int n = par[0];
   double lambda = par[1];
-  std::vector<double> T(par+2, par+n+1); //knots
+  std::vector<double> A(par+2,par+2+n); //levels
+  std::vector<double> T(par+2+n, par+2+n+n-1); //knots
   sort(T.begin(),T.end());
-  std::vector<double> A(par+n+1,par+2*n+1); //levels
+  //std::vector<double> A(par+n+1,par+2*n+1); //levels
   //calculate points
   double a = A[0];
   for(int i=0;i<T.size();i++)
@@ -121,15 +123,15 @@ inline void multi_step_fit(const char * name, int nlevels, double reg_lambda, TG
   auto ymax = *std::max_element(&g->GetY()[0], &g->GetY()[g->GetN()-1]);
   double dx = (xmax-xmin)/nlevels;
   double dy = (ymax-ymin)/nlevels;
+  for(int i=0;i<nlevels; i++, index++)  
+  {
+    f->SetParameter(index, ymin + i*(ymax-ymin)/nlevels);
+    f->SetParLimits(index, ymin-dy,ymax+dy);
+  }
   for(int i=0;i<nlevels-1; i++, index++) 
   {
     f->SetParLimits(index, xmin,xmax);
     f->SetParameter(index, xmin + (i+1)*dx);
-  }
-  for(int i=0;i<nlevels; i++, index++)  
-  {
-    f->SetParameter(1+nlevels+i, ymin + i*(ymax-ymin)/(nlevels-1));
-    f->SetParLimits(index, ymin-dy,ymax+dy);
   }
   g->Fit(name);
 }
@@ -143,7 +145,7 @@ std::list<EMS_t>  read_file(std::string file, Filter filter )
   EMS_t ems;
   while ( ifs >> ems.t >> ems.E >> ems.S >> ems.Ebepc >> ems.I)
   {
-    std::cout << ems.t << "  " << ems.E << " " << ems.S << " " << ems.Ebepc <<"  " << ems.I << std::endl;
+    //std::cout << ems.t << "  " << ems.E << " " << ems.S << " " << ems.Ebepc <<"  " << ems.I << std::endl;
     if(!filter(ems)) continue;
     L.push_back(ems);
   //int i=0;
@@ -159,7 +161,7 @@ TGraphErrors * make_graph(const std::list<EMS_t> & lst)
   for(auto & ems : lst)
   {
     int n = g->GetN();
-    std::cout << n << " " << ems.t.value << " " << ems.E.error << std::endl;
+    //std::cout << n << " " << ems.t.value << " " << ems.E.error << std::endl;
     g->SetPoint(n, ems.t.value, ems.E.value);
     g->SetPointError(n, ems.t.error, ems.E.error);
   }
@@ -169,6 +171,11 @@ TGraphErrors * make_graph(const std::list<EMS_t> & lst)
 
 int main(int argc, char ** argv)
 {
+  int nlevels=1;
+  double lambda=5000;
+  if(argc>=2) nlevels=std::stoi(argv[1]);
+  if(argc>=3) lambda = std::stod(argv[2]);
+
   std::string efile="E.results";
   std::string pfile="P.results";
   std::ifstream ifs(efile);
@@ -187,9 +194,9 @@ int main(int argc, char ** argv)
   TMultiGraph * mg = new TMultiGraph;
   mg->Add(eg, "p");
   mg->Add(pg, "p");
-  multi_step_fit("efun",5,5000,eg);
+  multi_step_fit("efun",nlevels,lambda,eg);
   eg->GetFunction("efun")->SetLineColor(kBlue);
-  multi_step_fit("pfun",5,5000,pg);
+  multi_step_fit("pfun",nlevels,lambda,pg);
   pg->GetFunction("pfun")->SetLineColor(kRed);
 	TApplication theApp("Draw ems files", &argc, argv);
   auto c = new TCanvas;
@@ -260,9 +267,8 @@ int main(int argc, char ** argv)
   c->cd(2);
   spline2.SetLineColor(kBlue);
   spline2.Draw("same");
-  int nlevels=5;
   new TCanvas;
-  multi_step_fit("f", 5, 5000,wg);
+  multi_step_fit("f", nlevels, lambda,wg);
   theApp.Run();
 }
 
