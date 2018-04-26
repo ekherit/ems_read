@@ -20,6 +20,7 @@
 #include <list>
 #include <fmt/printf.h>
 #include <string>
+#include <limits>
 
 #include <TApplication.h>
 #include <TCanvas.h>
@@ -32,6 +33,8 @@
 
 
 #include <ibn/valer.h>
+
+#include "multistep.h"
 
 struct EMS_t
 {
@@ -94,26 +97,31 @@ inline double erf_multi_step_function(double *x, double * par)
   return a;
 }
 
-inline double erf_multi_step_function2(double *x, double * par)
-{
-  int n = par[0];
-  double lambda = par[1];
-  std::vector<double> A(par+2,par+2+n); //levels
-  std::vector<double> T(par+2+n, par+2+n+n-1); //knots
-  sort(T.begin(),T.end());
-  //std::vector<double> A(par+n+1,par+2*n+1); //levels
-  //calculate points
-  double a = A[0];
-  for(int i=0;i<T.size();i++)
-  {
-    a += (A[i+1]-A[i])*(1.0 + erf((x[0]-T[i])/lambda))*0.5;
-  }
-  return a;
-}
+//inline double erf_multi_step_function2(double *x, double * par)
+//{
+//  int n = par[0];
+//  double lambda = par[1];
+//  struct data_t { double t; double a; };
+//  std::vector<data_t> D(n);
+//  double a = par[2];
+//  for(int i=0;i<D.size();i++)
+//  {
+//    D[i].a = par[3+i];
+//    D[i].t = i == (D.size()-1) ?  -std::numeric_limits<double>::infinity() : par[2+n+i];
+//  };
+//  sort(D.begin(),D.end(), [](const auto &d1, const auto &d2) { return d1.t<d2.t; }
+//  //calculate points
+//  for(int i=0;i<D.size()-1;i++)
+//  {
+//    a += (D[i+1].a-D[i].a)*(1.0 + erf((x[0]-D[i])/lambda))*0.5;
+//  }
+//  return a;
+//}
+
 
 inline void multi_step_fit(const char * name, int nlevels, double reg_lambda, TGraph * g)
 {
-  TF1 * f = new TF1(name, erf_multi_step_function2, 0, 1, 2*nlevels+1);
+  TF1 * f = new TF1(name, erf_multi_step_function, 0, 1, 2*nlevels+1);
   int index=0;
   f->FixParameter(index++,nlevels);
   f->FixParameter(index++, reg_lambda);
@@ -135,6 +143,31 @@ inline void multi_step_fit(const char * name, int nlevels, double reg_lambda, TG
   }
   g->Fit(name);
 }
+
+//inline void multi_step_fit3(const char * name, int nlevels, double reg_lambda, TGraph * g)
+//{
+//  TF1 * f = new TF1(name, erf_multi_step_function2, 0, 1, 2*nlevels+1);
+//  int index=0;
+//  f->FixParameter(index++,nlevels);
+//  f->FixParameter(index++, reg_lambda);
+//  auto xmin = *std::min_element(&g->GetX()[0], &g->GetX()[g->GetN()-1]);
+//  auto xmax = *std::max_element(&g->GetX()[0], &g->GetX()[g->GetN()-1]);
+//  auto ymin = *std::min_element(&g->GetY()[0], &g->GetY()[g->GetN()-1]);
+//  auto ymax = *std::max_element(&g->GetY()[0], &g->GetY()[g->GetN()-1]);
+//  double dx = (xmax-xmin)/nlevels;
+//  double dy = (ymax-ymin)/nlevels;
+//  for(int i=0;i<nlevels; i++, index++)  
+//  {
+//    f->SetParameter(index, ymin + i*(ymax-ymin)/nlevels);
+//    f->SetParLimits(index, ymin-dy,ymax+dy);
+//  }
+//  for(int i=0;i<nlevels-1; i++, index++) 
+//  {
+//    f->SetParLimits(index, xmin,xmax);
+//    f->SetParameter(index, xmin + (i+1)*dx);
+//  }
+//  g->Fit(name);
+//}
 
 template <class Filter>
 std::list<EMS_t>  read_file(std::string file, Filter filter )
@@ -226,9 +259,9 @@ int main(int argc, char ** argv)
   mg->Draw("a");
   mg->GetXaxis()->SetTimeDisplay(kTRUE);
 
-  multi_step_fit("efun",nlevels,lambda,eg);
+  multi_step_fit4("efun",nlevels,lambda,eg,c);
   eg->GetFunction("efun")->SetLineColor(kBlue);
-  multi_step_fit("pfun",nlevels,lambda,pg);
+  multi_step_fit4("pfun",nlevels,lambda,pg,c);
   pg->GetFunction("pfun")->SetLineColor(kRed);
   new TCanvas;
   eg->GetFunction("efun")->Draw();
@@ -282,7 +315,7 @@ int main(int argc, char ** argv)
   c->cd(2);
   spline2.SetLineColor(kBlue);
   spline2.Draw("same");
-  multi_step_fit("f", nlevels, lambda,wg);
+  multi_step_fit3("f", nlevels, lambda,wg,c);
   c->Modified();
   c->Update();
   theApp.Run();
