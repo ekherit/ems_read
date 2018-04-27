@@ -374,6 +374,7 @@ TF1 * make_knot_function(const char * name, const std::vector< std::pair<double,
   }
   f->FixParameter(2,knots[0].first);
   for( int i=1;i<knots.size();++i) f->SetParLimits(2+2*i, xmin, xmax);
+  f->SetNpx(1000);
   return f;
 }
 

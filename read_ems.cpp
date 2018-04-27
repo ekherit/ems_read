@@ -238,102 +238,46 @@ int main(int argc, char ** argv)
   auto pg = make_graph(plst);
   pg->SetMarkerColor(kRed);
   pg->SetLineColor(kRed);
+
   TMultiGraph * mg = new TMultiGraph;
   mg->Add(eg, "p");
   mg->Add(pg, "p");
 	TApplication theApp("Draw ems files", &argc, argv);
   auto c = new TCanvas;
-  c->Divide(1,2);
-
-  TGraphErrors * wg = new TGraphErrors;
-  TGraphErrors * wg2 = new TGraphErrors;
-  std::list<EMS_t> ltot = elst;
-  std::list<EMS_t> l2 = plst;
-  ltot.merge(l2, [](const auto & p1,const  auto & p2) { return p1.t.value < p2.t.value; });
-  ltot.sort([](const auto & p1,const  auto & p2) { return p1.t.value < p2.t.value; });
-  
-
-  for(auto & ems :ltot)
-  {
-    int n = wg->GetN();
-    double Ee = eg->Eval(ems.t.value);
-    double Ep = pg->Eval(ems.t.value);
-    double W = 2.0*sqrt(Ee*Ep)*cos(0.011);
-    //std::cout << n << " E = " << Ee << " P = " << Ep << " W=" << W <<std::endl;
-    if(std::isnormal(W)) 
-    {
-      wg->SetPoint(n, ems.t.value, W/2-1776.86);
-      wg2->SetPoint(n, ems.t.value, W/2);
-    }
-  }
-  wg2->SetLineWidth(3);
-  //mg->Add(wg2,"l");
-  c->cd(1);
+  c->Divide(1,3);
+  c->cd(3);
   mg->Draw("a");
   mg->GetXaxis()->SetTimeDisplay(kTRUE);
-
-  //multi_step_fit4("efun",nlevels,lambda,eg,c);
   multistep_fit("efun",eg,nlevels,lambda);
-  eg->GetFunction("efun")->SetLineColor(kBlue);
+  eg->GetFunction("efun")->SetLineColor(kBlack);
   multistep_fit("pfun",pg, nlevels,lambda);
-  pg->GetFunction("pfun")->SetLineColor(kRed);
-  new TCanvas;
-  eg->GetFunction("efun")->Draw();
-  pg->GetFunction("pfun")->Draw("same");
-  double tmin = ltot.front().t.value;
-  double tmax = ltot.back().t.value;
-  TGraph * fun_g =  new TGraph;
-  for(int i=0;i<100;i++)
-  {
-    double t = tmin + (tmax-tmin)*i/100;
-    double E1 = eg->GetFunction("efun")->Eval(t);
-    double E2 = pg->GetFunction("pfun")->Eval(t);
-    double E = sqrt(E1*E2)*cos(0.011);
-    fun_g->SetPoint(fun_g->GetN(), t, E);
-  }
-  fun_g->SetLineColor(kGreen);
-  fun_g->Draw("same");
-  theApp2.Run();
+  pg->GetFunction("pfun")->SetLineColor(kBlack);
 
-  c->cd(2);
-  wg->Draw("al");
-  wg->GetXaxis()->SetTitle("time");
-  wg->GetXaxis()->SetTimeDisplay(kTRUE);
-  wg->GetYaxis()->SetTitle("Wcm/2 - M_{#tau}");
-  gSystem->ProcessEvents();
-  
-  std::cout << "Making spline " << std::endl;
-
-  std::vector<double> T;
-  std::vector<double> E1;
-  std::vector<double> E2;
-  int i=0;
-  int Nspline=50;
-  while(i<Nspline)
-  {
-    auto t = tmin + (tmax-tmin)*double(i)/Nspline;
-    auto e = wg2->Eval(t);
-    if(!std::isnan(e)&& !std::isinf(e)) 
-    {
-      T.push_back(t);
-      E1.push_back(e);
-      E2.push_back(e/2-1886.86);
-    }
-    i++;
-  };
-  std::cout << "Before splien" << std::endl;
-  TSpline3 spline1("s1",T.front(),T.back(),&E1[0],T.size());
-  TSpline3 spline2("s2",T.front(),T.back(),&E2[0],T.size());
   c->cd(1);
-  spline1.SetLineWidth(2);
-  spline1.Draw("same");
+  eg->Draw("ap");
   c->cd(2);
-  spline2.SetLineColor(kBlue);
-  spline2.Draw("same");
-  //multi_step_fit4("f", nlevels, lambda,wg,c);
-  //multistep_fit("efun",eg,nlevels,lambda);
+  pg->Draw("ap");
   c->Modified();
   c->Update();
+
+  //new TCanvas;
+  //eg->GetFunction("efun")->Draw();
+  //pg->GetFunction("pfun")->Draw("same");
+  //double tmin = ltot.front().t.value;
+  //double tmax = ltot.back().t.value;
+  //TGraph * fun_g =  new TGraph;
+  //for(int i=0;i<100;i++)
+  //{
+  //  double t = tmin + (tmax-tmin)*i/100;
+  //  double E1 = eg->GetFunction("efun")->Eval(t);
+  //  double E2 = pg->GetFunction("pfun")->Eval(t);
+  //  double E = sqrt(E1*E2)*cos(0.011);
+  //  fun_g->SetPoint(fun_g->GetN(), t, E);
+  //}
+  //fun_g->SetLineColor(kGreen);
+  //fun_g->Draw("same");
+  //theApp2.Run();
+
   theApp.Run();
 }
 
