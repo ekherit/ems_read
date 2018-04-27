@@ -124,7 +124,7 @@ std::vector<std::pair<double, double> > estimate_knots(int nlevels, int N, doubl
   return knots;
 }
 
-TF1 * make_knot_function(const char * name, const std::vector< std::pair<double, double> > & knots, double lambda, double xmin, double xmax)
+TF1 * make_knot_function(const char * name, const std::vector< std::pair<double, double> > & knots, double lambda, double xmin, double xmax, double ymin, double ymax)
 {
   TF1 * f = new TF1(name, multistep, 0, 1, 2 + 2*knots.size());
   f->FixParameter(0, knots.size());
@@ -136,6 +136,7 @@ TF1 * make_knot_function(const char * name, const std::vector< std::pair<double,
   }
   f->FixParameter(2,knots[0].first);
   for( int i=1;i<knots.size();++i) f->SetParLimits(2+2*i, xmin, xmax);
+  for( int i=0;i<knots.size();++i) f->SetParLimits(2+2*i+1, ymin, ymax);
   f->SetNpx(1000);
   return f;
 }
@@ -147,7 +148,7 @@ TF1 * multistep_fit(const char * name, TGraph * g, double nlevels, double lambda
   auto ymin = *std::min_element(&g->GetY()[0], &g->GetY()[g->GetN()-1]);
   auto ymax = *std::max_element(&g->GetY()[0], &g->GetY()[g->GetN()-1]);
   auto kn = estimate_knots(nlevels, g->GetN(), g->GetX(), g->GetY());
-  TF1 * f = make_knot_function(name, kn, lambda, xmin, xmax);
+  TF1 * f = make_knot_function(name, kn, lambda, xmin, xmax, ymin, ymax);
   g->Fit(name);
   return f;
 }
