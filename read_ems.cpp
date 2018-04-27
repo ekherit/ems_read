@@ -119,9 +119,10 @@ int main(int argc, char ** argv)
   c->cd(3);
   mg->Draw("a");
   mg->GetXaxis()->SetTimeDisplay(kTRUE);
-  multistep_fit("efun",eg,nlevels,lambda);
+  //multistep_fit("efun",eg,nlevels,lambda);
+  multistep_fit2("efun","pfun",eg,pg, nlevels,lambda);
   eg->GetFunction("efun")->SetLineColor(kBlack);
-  multistep_fit("pfun",pg, nlevels,lambda);
+  //multistep_fit("pfun",pg, nlevels,lambda);
   pg->GetFunction("pfun")->SetLineColor(kBlack);
 
   c->cd(1);

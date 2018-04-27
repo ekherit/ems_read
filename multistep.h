@@ -96,7 +96,6 @@ double fit_knots(std::vector<std::pair<double, double> > & knots, int N, double 
   return get_chi2(knots, N, X, Y);
 }
 
-
 std::vector<std::pair<double, double> > estimate_knots(int nlevels, int N, double * X, double *Y)
 {
   std::vector<std::pair<double, double> > knots;
@@ -122,6 +121,63 @@ std::vector<std::pair<double, double> > estimate_knots(int nlevels, int N, doubl
     fit_knots(knots, N,X,Y);
   }
   return knots;
+}
+
+typedef std::vector<std::pair<double, double> > knots_t;
+std::vector<knots_t>  estimate_knots2(
+    int nlevels, 
+    int N1, double * X1, double *Y1,
+    int N2, double * X2, double *Y2
+    )
+{
+  std::vector<std::pair<double, double> > knots1,knots2;
+  knots1.reserve(nlevels);
+  knots2.reserve(nlevels);
+  knots1.push_back({-std::numeric_limits<double>::max(), Y1[0]});
+  knots2.push_back({-std::numeric_limits<double>::max(), Y2[0]});
+  for(int n=1;n<nlevels; ++n )
+  {
+    knots1.push_back({std::min(X1[0],X2[0]),Y1[N1-1]});
+    knots2.push_back({std::min(X1[0],X2[0]),Y2[N2-1]});
+    double chi2=std::numeric_limits<double>::max();
+
+    double x=X1[0];
+    for( int i=0;i<N1;++i)
+    {
+      knots1[n].first = X1[i];
+      knots2[n].first = X1[i];
+      std::vector<std::pair<double,double>> tmp_knots1 = knots1;
+      std::vector<std::pair<double,double>> tmp_knots2 = knots2;
+      double tmp_chi2=0;
+      tmp_chi2 += fit_knots(tmp_knots1, N1,X1,Y1);
+      tmp_chi2 += fit_knots(tmp_knots2, N2,X2,Y2);
+      if(tmp_chi2<chi2)
+      {
+        chi2 = tmp_chi2;
+        x=X1[i];
+      }
+    }
+    for( int i=0;i<N2;++i)
+    {
+      knots1[n].first = X2[i];
+      knots2[n].first = X2[i];
+      std::vector<std::pair<double,double>> tmp_knots1 = knots1;
+      std::vector<std::pair<double,double>> tmp_knots2 = knots2;
+      double tmp_chi2=0;
+      tmp_chi2 += fit_knots(tmp_knots1, N1,X1,Y1);
+      tmp_chi2 += fit_knots(tmp_knots2, N2,X2,Y2);
+      if(tmp_chi2<chi2)
+      {
+        chi2 = tmp_chi2;
+        x=X2[i];
+      }
+    }
+    knots1[n].first = x;
+    knots2[n].first = x;
+    fit_knots(knots1, N1,X1,Y1);
+    fit_knots(knots2, N2,X2,Y2);
+  }
+  return {knots1, knots2};
 }
 
 TF1 * make_knot_function(const char * name, const std::vector< std::pair<double, double> > & knots, double lambda, double xmin, double xmax, double ymin, double ymax)
@@ -151,4 +207,36 @@ TF1 * multistep_fit(const char * name, TGraph * g, double nlevels, double lambda
   TF1 * f = make_knot_function(name, kn, lambda, xmin, xmax, ymin, ymax);
   g->Fit(name);
   return f;
+}
+
+std::vector<TF1*> multistep_fit2(const char * name1, const char *name2, TGraph * g1, TGraph * g2, double nlevels, double lambda=1)
+{
+  auto xmin1 = *std::min_element(&g1->GetX()[0], &g1->GetX()[g1->GetN()-1]);
+  auto xmax1 = *std::max_element(&g1->GetX()[0], &g1->GetX()[g1->GetN()-1]);
+  auto ymin1 = *std::min_element(&g1->GetY()[0], &g1->GetY()[g1->GetN()-1]);
+  auto ymax1 = *std::max_element(&g1->GetY()[0], &g1->GetY()[g1->GetN()-1]);
+
+  auto xmin2 = *std::min_element(&g2->GetX()[0], &g2->GetX()[g2->GetN()-1]);
+  auto xmax2 = *std::max_element(&g2->GetX()[0], &g2->GetX()[g2->GetN()-1]);
+  auto ymin2 = *std::min_element(&g2->GetY()[0], &g2->GetY()[g2->GetN()-1]);
+  auto ymax2 = *std::max_element(&g2->GetY()[0], &g2->GetY()[g2->GetN()-1]);
+  auto xmin = std::min(xmin1, xmin2);
+  auto xmax = std::max(xmax1, xmax2);
+  auto ymin = std::min(ymin1, ymin2);
+  auto ymax = std::max(ymax1, ymax2);
+
+  auto kn = estimate_knots2(nlevels, 
+      g1->GetN(), g1->GetX(), g1->GetY(),
+      g2->GetN(), g2->GetX(), g2->GetY()
+      );
+  TF1 * f1 = make_knot_function(name1, kn[0], lambda, xmin, xmax, ymin, ymax);
+  TF1 * f2 = make_knot_function(name2, kn[1], lambda, xmin, xmax, ymin, ymax);
+  for(int i=0;i<nlevels;i++) 
+  {
+    f1->FixParameter(2+2*i, kn[0][i].first);
+    f2->FixParameter(2+2*i, kn[0][i].first);
+  }
+  g1->Fit(name1);
+  g2->Fit(name2);
+  return {f1,f2};
 }
