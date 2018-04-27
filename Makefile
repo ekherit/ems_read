@@ -1,14 +1,16 @@
+all : read_ems
 CXXFLAGS=`root-config --cflags` -I./ -I$(HOME)/work/ -std=c++14
-LIBS= `root-config --libs` -lMinuit -lboost_program_options -lMinuit2 -lfmt 
+LIBS= `root-config --libs` -lMinuit -lboost_program_options -lfmt 
 
 read_ems: read_ems.o
-	g++ read_ems.o $(LIBS) -o read_ems
+	g++ $(LIBS) read_ems.o $(LIBS) -o read_ems
 
-draw_ems.o :  draw_ems.cpp
-	g++ draw_ems.o $(CXXFLAGS)  -o draw_ems.o
+
+read_ems.o :  read_ems.cpp multistep.h
+	g++ -c read_ems.cpp $(CXXFLAGS)  -o read_ems.o
 
 #.o.cpp:
 #	g++  -o $@ $(CXXFLAGS) -c $^
 	
 clean :
-				rm -f *.o rm *.so* *.a
+				rm -f *.o rm *.so* *.a read_ems

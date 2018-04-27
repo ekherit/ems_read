@@ -205,6 +205,19 @@ TGraphErrors * make_graph(const std::list<EMS_t> & lst)
 
 int main(int argc, char ** argv)
 {
+	TApplication theApp2("Draw ems files", &argc, argv);
+  //TF1 * fms = new TF1("fms",multistep2,0,10,3+2*3);
+  //fms->SetParameter(0, 3);
+  //fms->SetParameter(1, 0.5);
+  //fms->SetParameter(2, 0);
+  //fms->SetParameter(3, 2);
+  //fms->SetParameter(4, 2);
+  //fms->SetParameter(5, 5);
+  //fms->SetParameter(6, 5);
+  //fms->SetParameter(7, 7);
+  //fms->SetParameter(8, 7);
+  //fms->SetNpx(1000);
+  //fms->Draw();
   int nlevels=1;
   double lambda=5000;
   if(argc>=2) nlevels=std::stoi(argv[1]);
@@ -259,9 +272,10 @@ int main(int argc, char ** argv)
   mg->Draw("a");
   mg->GetXaxis()->SetTimeDisplay(kTRUE);
 
-  multi_step_fit4("efun",nlevels,lambda,eg,c);
+  //multi_step_fit4("efun",nlevels,lambda,eg,c);
+  multistep_fit("efun",eg,nlevels,lambda);
   eg->GetFunction("efun")->SetLineColor(kBlue);
-  multi_step_fit4("pfun",nlevels,lambda,pg,c);
+  multistep_fit("pfun",pg, nlevels,lambda);
   pg->GetFunction("pfun")->SetLineColor(kRed);
   new TCanvas;
   eg->GetFunction("efun")->Draw();
@@ -279,6 +293,7 @@ int main(int argc, char ** argv)
   }
   fun_g->SetLineColor(kGreen);
   fun_g->Draw("same");
+  theApp2.Run();
 
   c->cd(2);
   wg->Draw("al");
@@ -315,7 +330,8 @@ int main(int argc, char ** argv)
   c->cd(2);
   spline2.SetLineColor(kBlue);
   spline2.Draw("same");
-  multi_step_fit3("f", nlevels, lambda,wg,c);
+  //multi_step_fit4("f", nlevels, lambda,wg,c);
+  //multistep_fit("efun",eg,nlevels,lambda);
   c->Modified();
   c->Update();
   theApp.Run();
