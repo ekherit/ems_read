@@ -219,6 +219,7 @@ TF1 * multistep_fit(const char * name, TGraph * g, double nlevels, double lambda
   return f;
 }
 
+
 std::vector<TF1*> multistep_fit2(const char * name1, const char *name2, TGraph * g1, TGraph * g2, double nlevels, double lambda=1)
 {
   auto xmin1 = *std::min_element(&g1->GetX()[0], &g1->GetX()[g1->GetN()-1]);
@@ -249,4 +250,11 @@ std::vector<TF1*> multistep_fit2(const char * name1, const char *name2, TGraph *
   g1->Fit(name1);
   g2->Fit(name2);
   return {f1,f2};
+}
+
+class MultiStepFitter
+{
+
+};
+
 }
