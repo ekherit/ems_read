@@ -44,7 +44,7 @@ inline double multistep(double *x, double * par)
 
 
 
-double get_chi2(const std::vector<std::pair<double, double> > & knots, int N, double *X, double *Y)
+double get_chi2(const std::vector<std::pair<double, double> > & knots, int N, double *X, double *Y, double * dX=nullptr, double *dY=nullptr)
 {
   double chi2=0;
   for(int i=0;i<N;++i)
@@ -53,19 +53,29 @@ double get_chi2(const std::vector<std::pair<double, double> > & knots, int N, do
     {
       if(knots[n].first < X[i] &&  X[i] < knots[n+1].first)
       {
-        chi2+=pow(knots[n].second - Y[i],2.0);
+        double error = 1;
+        if( dY != nullptr )
+        {
+          if( dY[i]!= 0 ) error = dY[i];
+        }
+        chi2+=pow((knots[n].second - Y[i])/error,2.0);
       }
     }
     //special case last knot
     if(knots[knots.size()-1].first < X[i])
     {
-        chi2+=pow(knots[knots.size()-1].second - Y[i],2.0);
+        double error = 1;
+        if( dY != nullptr )
+        {
+          if( dY[i]!= 0 ) error = dY[i];
+        }
+        chi2+=pow((knots[knots.size()-1].second - Y[i])/error,2.0);
     }
   }
   return chi2;
 }
 
-double fit_knots(std::vector<std::pair<double, double> > & knots, int N, double *X, double *Y)
+double fit_knots(std::vector<std::pair<double, double> > & knots, int N, double *X, double *Y, double * dX = nullptr, double * dY = nullptr)
 {
   std::sort(begin(knots), end(knots), [](const auto & p1, const auto &p2){ return p1.first<p2.first;} );
   std::vector<long> count(knots.size());
@@ -93,10 +103,10 @@ double fit_knots(std::vector<std::pair<double, double> > & knots, int N, double 
   {
     if(count[n]!=0) knots[n].second/=count[n];
   }
-  return get_chi2(knots, N, X, Y);
+  return get_chi2(knots, N, X, Y, dX, dY);
 }
 
-std::vector<std::pair<double, double> > estimate_knots(int nlevels, int N, double * X, double *Y)
+std::vector<std::pair<double, double> > estimate_knots(int nlevels, int N, double * X, double *Y, double *dX = nullptr, double *dY = nullptr)
 {
   std::vector<std::pair<double, double> > knots;
   knots.reserve(nlevels);
@@ -110,7 +120,7 @@ std::vector<std::pair<double, double> > estimate_knots(int nlevels, int N, doubl
     {
       knots[n].first = X[i];
       std::vector<std::pair<double,double>> tmp_knots = knots;
-      double tmp_chi2 = fit_knots(tmp_knots, N,X,Y);
+      double tmp_chi2 = fit_knots(tmp_knots, N,X,Y,dX,dY);
       if(tmp_chi2<chi2)
       {
         chi2 = tmp_chi2;
@@ -118,7 +128,7 @@ std::vector<std::pair<double, double> > estimate_knots(int nlevels, int N, doubl
       }
     }
     knots[n].first = x;
-    fit_knots(knots, N,X,Y);
+    fit_knots(knots, N,X,Y,dX,dY);
   }
   return knots;
 }
